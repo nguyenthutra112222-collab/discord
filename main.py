@@ -35,6 +35,7 @@ player_cache = {}
 @bot.event
 async def on_ready():
     bot.add_view(UpgradeView())
+    bot.add_view(ShopView())
     print(f"✅ Đăng nhập thành công: {bot.user}")
 
     channel = bot.get_channel(DATA_CHANNEL_ID)
@@ -72,6 +73,12 @@ async def create_player(user_id):
         "jackpot": 0,
         "win_streak": 0,
         "last_daily": ""
+        "inv_potion_cash": 0,
+        "inv_potion_luck": 0,
+        "inv_potion_jackpot": 0,
+        "expire_potion_cash": "",
+        "expire_potion_luck": "",
+        "expire_potion_jackpot": ""
     }
     message = await channel.send(json.dumps(data))
     data["_message_id"] = message.id
@@ -145,7 +152,6 @@ def parse_bet_amount(val_str: str, current_cash: int) -> int:
             
     return int(float(val_str))
 
-# ================= LỆNH ROLL (HỆ SỐ NHÂN >= 2.0) =================
 @bot.command()
 async def roll(ctx, bet: str = None): 
     player = await get_player(ctx.author.id)
@@ -166,12 +172,34 @@ async def roll(ctx, bet: str = None):
 
     player["cash"] -= bet_amount
 
+    # --- KHU VỰC LOGIC CHECK THỜI GIAN THUỐC ---
+    now = datetime.now(timezone.utc)
+    
+    # 1. Kiểm tra thuốc Luck (+10 vào win_rate)
+    has_potion_luck = False
+    if player.get("expire_potion_luck", ""):
+        if now < datetime.fromisoformat(player["expire_potion_luck"]):
+            has_potion_luck = True
+            
+    # 2. Kiểm tra thuốc Jackpot (+5 vào jackpot_rate)
+    has_potion_jackpot = False
+    if player.get("expire_potion_jackpot", ""):
+        if now < datetime.fromisoformat(player["expire_potion_jackpot"]):
+            has_potion_jackpot = True
+
+    # 3. Kiểm tra thuốc x2 Cash tiền thưởng
+    has_potion_cash = False
+    if player.get("expire_potion_cash", ""):
+        if now < datetime.fromisoformat(player["expire_potion_cash"]):
+            has_potion_cash = True
+    # ---------------------------------------------
+
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
-    win_streak = player.get("win_streak", 0)
 
-    win_rate = 45 + (luck * 0.5)
-    jackpot_rate = 2 + (jackpot * 0.2)
+    # Sửa Logic tách biệt hoàn toàn theo đúng ý bạn:
+    win_rate = 45 + (luck * 0.5) + (10 if has_potion_luck else 0)           # Luck CHỈ tăng tỷ lệ thắng
+    jackpot_rate = 2 + (jackpot * 0.2) + (5 if has_potion_jackpot else 0)   # Jackpot CHỈ tăng tỷ lệ hũ
 
     if player["cash"] <= 1000:
         win_rate += 15
@@ -184,9 +212,11 @@ async def roll(ctx, bet: str = None):
 
     roll_number = random.uniform(0, 100)
 
-    # 1. TRÚNG JACKPOT (Giữ nguyên x10 cực lớn)
+    # 1. TRÚNG JACKPOT
     if roll_number <= jackpot_rate:
         reward = bet_amount * 10
+        if has_potion_cash: reward *= 2 # Áp dụng thuốc X2 nếu có
+        
         player["cash"] += reward
         player["win_streak"] += 1
         
@@ -200,15 +230,17 @@ async def roll(ctx, bet: str = None):
         if leveled_up:
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
+        potion_notice = " *(✨ Thuốc x2 Cash kích hoạt)*" if has_potion_cash else ""
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"💥 **JACKPOT** 💥\n\n🎉 {ctx.author.mention}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"💥 **JACKPOT** 💥{potion_notice}\n\n🎉 {ctx.author.mention}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 2. TRÚNG GIẢI THẮNG THƯỜNG (Đã sửa hệ số từ x2.0 trở lên)
+    # 2. TRÚNG GIẢI THẮNG THƯỜNG
     elif roll_number <= win_rate:
-        multiplier = random.choice([2.0, 2.5, 3.0])  # Thay đổi tại đây
-        reward = int(bet_amount * multiplier) 
+        multiplier = random.choice([2.0, 2.5, 3.0])
+        reward = int(bet_amount * multiplier)
+        if has_potion_cash: reward *= 2 # Áp dụng thuốc X2 nếu có
         
         player["cash"] += reward
         player["win_streak"] += 1
@@ -223,9 +255,10 @@ async def roll(ctx, bet: str = None):
         if leveled_up:
             await ctx.send(f"🎉 {ctx.author.mention} đã xuất sắc thăng lên Level {player['level']}!")
 
+        potion_notice = " *(✨ Thuốc x2 Cash kích hoạt)*" if has_potion_cash else ""
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"🎉 **THẮNG!**\n\n🎲 Hệ số: x{multiplier}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"🎉 **THẮNG!**{potion_notice}\n\n🎲 Hệ số: x{multiplier}\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
     # 3. THUA CUỘC
@@ -249,8 +282,6 @@ async def roll_error(ctx, error):
     if isinstance(error, commands.MissingRequiredArgument):
         await ctx.send("🎲 Cách dùng: `>roll <số tiền>`\nVí dụ: `>roll 1000`")
 
-# ================= LỆNH SLOT (HỆ SỐ NHÂN >= 2.0) =================
-# ================= LỆNH SLOT (HỆ SỐ NHÂN >= 2.0) =================
 @bot.command()
 async def slot(ctx, bet: str = None):
     player = await get_player(ctx.author.id)
@@ -271,6 +302,25 @@ async def slot(ctx, bet: str = None):
 
     player["cash"] -= bet_amount
 
+    # --- KHU VỰC LOGIC CHECK THỜI GIAN THUỐC ---
+    now = datetime.now(timezone.utc)
+    
+    has_potion_luck = False
+    if player.get("expire_potion_luck", ""):
+        if now < datetime.fromisoformat(player["expire_potion_luck"]):
+            has_potion_luck = True
+            
+    has_potion_jackpot = False
+    if player.get("expire_potion_jackpot", ""):
+        if now < datetime.fromisoformat(player["expire_potion_jackpot"]):
+            has_potion_jackpot = True
+
+    has_potion_cash = False
+    if player.get("expire_potion_cash", ""):
+        if now < datetime.fromisoformat(player["expire_potion_cash"]):
+            has_potion_cash = True
+    # ---------------------------------------------
+
     luck = player.get("luck", 0)
     jackpot = player.get("jackpot", 0)
     
@@ -282,16 +332,22 @@ async def slot(ctx, bet: str = None):
         await msg.edit(content=f"🎰 | {e1} | {e2} | {e3} |")
         await asyncio.sleep(0.3)
 
-    jackpot_rate = 1 + (jackpot * 0.3)
+    # Tách biệt tỷ lệ hoàn toàn giống Roll
+    jackpot_rate = 1 + (jackpot * 0.3) + (5 if has_potion_jackpot else 0)  # Jackpot CHỈ tăng nổ hũ
     win_bonus = 0
     if player["cash"] <= 1000:
         win_bonus += 10
 
-    rng = random.uniform(0, 100)
+    # Luck chỉ bổ trợ cộng dồn vào tỷ lệ rơi các tầng thắng thường/lớn/siêu thắng
+    added_luck = luck + (10 if has_potion_luck else 0)
 
-    # 1. ⭐⭐⭐ SLOT JACKPOT (Nâng cấp lên x30)
+    rng = random.uniform(0, 100)
+    potion_notice = " *(✨ Thuốc x2 Cash kích hoạt)*" if has_potion_cash else ""
+
+    # 1. ⭐⭐⭐ SLOT JACKPOT (x30)
     if rng <= jackpot_rate:
         reward = bet_amount * 30 
+        if has_potion_cash: reward *= 2
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -307,12 +363,13 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"💥 **JACKPOT TRÚNG LỚN** 💥\n🎰 | ⭐ | ⭐ | ⭐ |\n\n🎲 Hệ số: x30\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"💥 **JACKPOT TRÚNG LỚN** 💥{potion_notice}\n🎰 | ⭐ | ⭐ | ⭐ |\n\n🎲 Hệ số: x30\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 2. 💎💎💎 SIÊU THẮNG (Nâng cấp lên x15)
-    elif rng <= 5 + win_bonus + luck:
+    # 2. 💎💎💎 SIÊU THẮNG (x15)
+    elif rng <= 5 + win_bonus + added_luck:
         reward = bet_amount * 15 
+        if has_potion_cash: reward *= 2
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -325,12 +382,13 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"💎 **SIÊU THẮNG** 💎\n🎰 | 💎 | 💎 | 💎 |\n\n🎲 Hệ số: x15\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"💎 **SIÊU THẮNG** 💎{potion_notice}\n🎰 | 💎 | 💎 | 💎 |\n\n🎲 Hệ số: x15\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 3. 🍒🍒🍒 THẮNG LỚN (Nâng cấp lên x6)
-    elif rng <= 15 + win_bonus + luck:
+    # 3. 🍒🍒🍒 THẮNG LỚN (x6)
+    elif rng <= 15 + win_bonus + added_luck:
         reward = bet_amount * 6 
+        if has_potion_cash: reward *= 2
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -343,12 +401,13 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"🎉 **THẮNG LỚN!**\n🎰 | 🍒 | 🍒 | 🍒 |\n\n🎲 Hệ số: x6\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"🎉 **THẮNG LỚN!**{potion_notice}\n🎰 | 🍒 | 🍒 | 🍒 |\n\n🎲 Hệ số: x6\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
-    # 4. 🍋🍋🍋 THẮNG THƯỜNG (Giữ nguyên x2)
-    elif rng <= 30 + win_bonus + luck:
+    # 4. 🍋🍋🍋 THẮNG THƯỜNG (x2)
+    elif rng <= 30 + win_bonus + added_luck:
         reward = bet_amount * 2 
+        if has_potion_cash: reward *= 2
         player["cash"] += reward
         player["win_streak"] += 1
 
@@ -361,7 +420,7 @@ async def slot(ctx, bet: str = None):
 
         streak_text = f"🔥 Chuỗi thắng: {player['win_streak']} (Bonus +{bonus_xp} EXP)" if player["win_streak"] >= 3 else ""
         return await msg.edit(
-            content=f"✨ **THẮNG!**\n🎰 | 🍋 | 🍋 | 🍋 |\n\n🎲 Hệ số: x2\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
+            content=f"✨ **THẮNG!**{potion_notice}\n🎰 | 🍋 | 🍋 | 🍋 |\n\n🎲 Hệ số: x2\n💰 +{reward:,} Cash\n✨ +{total_xp} EXP {streak_text}"
         )
 
     # 5. THUA CUỘC
@@ -439,6 +498,87 @@ def get_rank(level):
     elif level >= 10: return "⭐ Kẻ Phiêu Lưu"
     return "🌱 Tân Thủ"
 
+class UsePotionView(discord.ui.View):
+    def __init__(self, user_id):
+        super().__init__(timeout=60)
+        self.user_id = user_id
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message("❌ Đây không phải kho đồ của bạn!", ephemeral=True)
+            return False
+        return True
+
+    async def use_potion(self, interaction: discord.Interaction, potion_type: str, name: str):
+        player = await get_player(interaction.user.id)
+        inv_key = f"inv_{potion_type}"
+        expire_key = f"expire_{potion_type}"
+        
+        if player.get(inv_key, 0) <= 0:
+            return await interaction.response.send_message(f"❌ Bạn không còn bình **{name}** nào trong kho! Hãy ra `>shop` để mua.", ephemeral=True)
+            
+        # Trừ 1 bình trong túi
+        player[inv_key] -= 1
+        
+        # Thiết lập thời gian hết hạn là 15 phút tính từ bây giờ
+        expire_time = datetime.now(timezone.utc) + timedelta(minutes=15)
+        player[expire_key] = expire_time.isoformat()
+        
+        await save_player(player)
+        
+        # Cập nhật lại giao diện Embed Profile mới ngay lập tức
+        new_embed = await make_profile_embed(interaction.user, player)
+        await interaction.response.edit_message(embed=new_embed, view=self)
+        await interaction.followup.send(f"🧪 Bạn đã sử dụng **{name}**! Có tác dụng trong 15 phút.", ephemeral=True)
+
+    @discord.ui.button(label="Cắn X2 Cash", style=discord.ButtonStyle.success, custom_id="use_cash")
+    async def use_cash(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.use_potion(interaction, "potion_cash", "Thuốc X2 Cash")
+
+    @discord.ui.button(label="Cắn +10 Luck", style=discord.ButtonStyle.primary, custom_id="use_luck")
+    async def use_luck(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.use_potion(interaction, "potion_luck", "Thuốc +10 Luck")
+
+    @discord.ui.button(label="Cắn +5 Jackpot", style=discord.ButtonStyle.danger, custom_id="use_jackpot")
+    async def use_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.use_potion(interaction, "potion_jackpot", "Thuốc +5 Jackpot")
+
+async def make_profile_embed(member, player):
+    need_xp = player["level"] * 100
+    now = datetime.now(timezone.utc)
+
+    # Kiểm tra hạn dùng của thuốc để hiển thị tình trạng (Đang kích hoạt / Chưa dùng)
+    status_potions = []
+    for p_type, label in [("potion_cash", "X2 Cash"), ("potion_luck", "+10 Luck"), ("potion_jackpot", "+5 Jackpot")]:
+        exp_str = player.get(f"expire_{p_type}", "")
+        is_active = False
+        time_left_str = ""
+        if exp_str:
+            exp_time = datetime.fromisoformat(exp_str)
+            if now < exp_time:
+                is_active = True
+                remains = exp_time - now
+                mins, secs = divmod(int(remains.total_seconds()), 60)
+                time_left_str = f" ⏳ Còn {mins}p {secs}s"
+        
+        qty = player.get(f"inv_{p_type}", 0)
+        status_potions.append(f"• {label}: **{qty}** bình" + (f" *(🔥 Đang bật{time_left_str})*" if is_active else ""))
+
+    embed = discord.Embed(title=f"👤 Hồ sơ của {member.display_name}", color=discord.Color.blue())
+    embed.set_thumbnail(url=member.display_avatar.url)
+    embed.add_field(name="💰 Cash", value=f"{player['cash']:,}", inline=True)
+    embed.add_field(name="🛡️ Level", value=player["level"], inline=True)
+    embed.add_field(name="✨ XP", value=f"{player['xp']}/{need_xp}", inline=True)
+    embed.add_field(name="🍀 Luck Gốc", value=player.get("luck", 0), inline=True)
+    embed.add_field(name="🎰 Jackpot Gốc", value=player.get("jackpot", 0), inline=True)
+    embed.add_field(name="🔥 Chuỗi Thắng", value=player.get("win_streak", 0), inline=True)
+    embed.add_field(name="🏅 Danh hiệu", value=get_rank(player["level"]), inline=True)
+    
+    # Khu vực kho đồ thuốc
+    embed.add_field(name="🎒 Kho Dược Phẩm (Thuốc 15p)", value="\n".join(status_potions), inline=False)
+    embed.set_footer(text=f"ID Người dùng: {member.id}")
+    return embed
+
 @bot.command()
 async def profile(ctx, member: discord.Member = None):
     if member is None:
@@ -447,20 +587,13 @@ async def profile(ctx, member: discord.Member = None):
         return await ctx.send("❌ Không thể xem hồ sơ của hệ thống Bot.")
 
     player = await get_player(member.id)
-    need_xp = player["level"] * 100
+    embed = await make_profile_embed(member, player)
 
-    embed = discord.Embed(title=f"👤 Hồ sơ của {member.display_name}", color=discord.Color.blue())
-    embed.set_thumbnail(url=member.display_avatar.url)
-    embed.add_field(name="💰 Cash", value=f"{player['cash']:,}", inline=True)
-    embed.add_field(name="⭐ Level", value=player["level"], inline=True)
-    embed.add_field(name="📈 XP", value=f"{player['xp']}/{need_xp}", inline=True)
-    embed.add_field(name="🍀 Luck", value=player["luck"], inline=True)
-    embed.add_field(name="💎 Jackpot", value=player["jackpot"], inline=True)
-    embed.add_field(name="🔥 Chuỗi Thắng", value=player.get("win_streak", 0), inline=True)
-    embed.add_field(name="🏆 Danh hiệu", value=get_rank(player["level"]), inline=False)
-    embed.set_footer(text=f"ID Người dùng: {member.id}")
-
-    await ctx.send(embed=embed)
+    # Nếu tự xem bản thân -> Đính kèm nút bấm dùng thuốc
+    if member.id == ctx.author.id:
+        await ctx.send(embed=embed, view=UsePotionView(ctx.author.id))
+    else: # Xem người khác -> Ẩn nút hoàn toàn
+        await ctx.send(embed=embed)
 
 @bot.command()
 async def toplvl(ctx):
@@ -882,6 +1015,63 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None):
             embed.add_field(name="🏆 Kết quả:", value="Không có ai tham gia nhặt tiền trong đợt này.", inline=False)
             
         await rain_msg.edit(embed=embed, view=view)
+
+# ================= HỆ THỐNG SHOP VẬT PHẨM MỚI =================
+# Cấu hình giá tiền của từng loại thuốc tại đây
+PRICES = {
+    "potion_cash": 5000,       # Thuốc X2 Cash
+    "potion_luck": 3000,       # Thuốc +10 Luck
+    "potion_jackpot": 6000     # Thuốc +5 Jackpot
+}
+
+class ShopView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        # Cập nhật nhãn kèm giá tiền trực quan lên nút bấm
+        self.children[0].label = f"🧪 Thuốc X2 Cash ({PRICES['potion_cash']:,})"
+        self.children[1].label = f"🧪 Thuốc +10 Luck ({PRICES['potion_luck']:,})"
+        self.children[2].label = f"🧪 Thuốc +5 Jackpot ({PRICES['potion_jackpot']:,})"
+
+    async def buy_potion(self, interaction: discord.Interaction, potion_type: str, price: int, name: str):
+        player = await get_player(interaction.user.id)
+        
+        if player.get("cash", 1000) < price:
+            return await interaction.response.send_message(f"❌ Bạn không đủ tiền! Cần **{price:,} Cash** để mua {name}.", ephemeral=True)
+            
+        player["cash"] -= price
+        # Tăng số lượng trong kho đồ (mặc định bằng 0 nếu chưa có)
+        db_key = f"inv_{potion_type}"
+        player[db_key] = player.get(db_key, 0) + 1
+        
+        await save_player(player)
+        await interaction.response.send_message(f"🛒 Bạn đã mua thành công 1 bình **{name}**! Gõ `>profile` để sử dụng.", ephemeral=True)
+
+    @discord.ui.button(style=discord.ButtonStyle.success, custom_id="shop_buy_cash")
+    async def buy_cash(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.buy_potion(interaction, "potion_cash", PRICES["potion_cash"], "Thuốc X2 Cash (15p)")
+
+    @discord.ui.button(style=discord.ButtonStyle.primary, custom_id="shop_buy_luck")
+    async def buy_luck(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.buy_potion(interaction, "potion_luck", PRICES["potion_luck"], "Thuốc +10 Luck (15p)")
+
+    @discord.ui.button(style=discord.ButtonStyle.danger, custom_id="shop_buy_jackpot")
+    async def buy_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.buy_potion(interaction, "potion_jackpot", PRICES["potion_jackpot"], "Thuốc +5 Jackpot (15p)")
+
+@bot.command()
+async def shop(ctx):
+    """Mở cửa hàng mua thuốc tăng chỉ số"""
+    embed = discord.Embed(
+        title="🧪 TIỆM THUỐC ĐẠI GIA - SHOP VẬT PHẨM",
+        description="Mua thuốc tăng sức mạnh để tăng tỷ lệ chiến thắng khi chơi game!\n*Lưu ý: Tất cả các loại thuốc đều có tác dụng trong **15 phút** kể từ lúc sử dụng.*",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="💰 Thuốc X2 Cash", value=f"• Giá: `{PRICES['potion_cash']:,} Cash`\n• Tác dụng: Gấp đôi số tiền nhận được khi thắng Roll / Slot.", inline=False)
+    embed.add_field(name="🍀 Thuốc +10 Luck", value=f"• Giá: `{PRICES['potion_luck']:,} Cash`\n• Tác dụng: Thêm thẳng `+10` điểm May Mắn vào tỷ lệ thắng.", inline=False)
+    embed.add_field(name="🎰 Thuốc +5 Jackpot", value=f"• Giá: `{PRICES['potion_jackpot']:,} Cash`\n• Tác dụng: Thêm thẳng `+5` điểm vào tỷ lệ nổ hũ Jackpot.", inline=False)
+    embed.set_footer(text="Nhấn các nút bấm bên dưới để mua nhanh.")
+    
+    await ctx.send(embed=embed, view=ShopView())
 
 @bot.command(name="botinfo", aliases=["about", "bot"])
 async def bot_info(ctx):
