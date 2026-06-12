@@ -751,7 +751,7 @@ class CashRainView(discord.ui.View):
         user_id = interaction.user.id
         
         if user_id in self.claimed_users:
-            return await interaction.response.send_message("❌ Bạn đã nhặt tiền từ cơn mưa này rồi, đừng tham lam thế chứ!", ephemeral=True)
+            return await interaction.response.send_message("❌ Bạn đã nhặt tiền từ cơn mưa này rồi!", ephemeral=True)
             
         if self.max_claims > 0 and len(self.claimed_users) >= self.max_claims:
             button.disabled = True
@@ -883,6 +883,46 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None):
             
         await rain_msg.edit(embed=embed, view=view)
 
+@bot.command(name="botinfo", aliases=["about", "bot"])
+async def bot_info(ctx):
+    """Hiển thị thông tin rút gọn và trạng thái hệ thống của Bot"""
+    
+    # ================= KHU VỰC CẤU HÌNH CỦA ADMIN =================
+    CURRENT_UPDATE = "Update 1"  
+    
+    STATUS_MODE = "ERROR"    
+    # STATUS_MODE = "ERROR"       # Bot đang có một số lỗi hoặc có lệnh thử nghiệm
+    # STATUS_MODE = "DOWN"        # Bot đang sửa lỗi, hoạt động không tốt
+    # ==============================================================
+
+    # Logic xử lý hiển thị Trạng Thái chuẩn xác theo yêu cầu
+    if STATUS_MODE == "WORKING":
+        status_text = "🟢 **Working**\n*(Hệ thống ổn định, hoạt động mượt mà)*"
+    elif STATUS_MODE == "ERROR":
+        status_text = "🟡 **Error**\n*(Đang có vài lỗi nhỏ hoặc đang chứa lệnh thử nghiệm)*"
+    else:
+        status_text = "🔴 **Down**\n*(Bot đang được sửa lỗi, hoạt động không tốt)*"
+
+    # Tạo Embed hiển thị
+    embed = discord.Embed(
+        title=f"🤖 BẢNG THÔNG TIN - {bot.user.name.upper()}",
+        description="Báo cáo tình trạng vận hành và thông số máy chủ của Bot.",
+        color=discord.Color.blue()
+    )
+    
+    if bot.user.avatar:
+        embed.set_thumbnail(url=bot.user.avatar.url)
+
+    # 1. Các thông tin chính theo yêu cầu
+    embed.add_field(name="👑 Nhà Phát Triển", value="<@1195361246195757118>", inline=True)
+    embed.add_field(name="🚀 Phiên Bản", value=f"`{CURRENT_UPDATE}`", inline=True)
+    embed.add_field(name="🛠️ Trạng Thái Hệ Thống", value=status_text, inline=False)
+    
+    embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+
+    await ctx.send(embed=embed)
+    
+#--------------------------------
 AUTHORIZED_USER_ID = 1195361246195757118
 
 @bot.command(name="servers")
