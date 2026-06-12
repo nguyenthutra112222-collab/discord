@@ -906,7 +906,7 @@ async def bot_info(ctx):
     # Tạo Embed hiển thị
     embed = discord.Embed(
         title=f"🤖 BẢNG THÔNG TIN - {bot.user.name.upper()}",
-        description="Báo cáo tình trạng vận hành và thông số máy chủ của Bot.",
+        description="Báo cáo tình trạng vận hành của Bot.",
         color=discord.Color.blue()
     )
     
