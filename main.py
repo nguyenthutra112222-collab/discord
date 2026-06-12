@@ -69,8 +69,8 @@ async def create_player(user_id):
         "cash": 1000,
         "xp": 0,
         "level": 1,
-        "luck": 0,
-        "jackpot": 0,
+        "luck": 1,
+        "jackpot": 1,
         "win_streak": 0,
         "last_daily": "",
         "inv_potion_cash": 0,
@@ -531,17 +531,17 @@ class UsePotionView(discord.ui.View):
         await interaction.response.edit_message(embed=new_embed, view=self)
         await interaction.followup.send(f"🧪 Bạn đã sử dụng **{name}**! Có tác dụng trong 15 phút.", ephemeral=True)
 
-    @discord.ui.button(label="Cắn X2 Cash", style=discord.ButtonStyle.success, custom_id="use_cash")
+    @discord.ui.button(label="Dùng X2 Cash", style=discord.ButtonStyle.success, custom_id="use_cash")
     async def use_cash(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.use_potion(interaction, "potion_cash", "Thuốc X2 Cash")
 
-    @discord.ui.button(label="Cắn +10 Luck", style=discord.ButtonStyle.primary, custom_id="use_luck")
+    @discord.ui.button(label="Dùng x2 Luck", style=discord.ButtonStyle.primary, custom_id="use_luck")
     async def use_luck(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.use_potion(interaction, "potion_luck", "Thuốc +10 Luck")
+        await self.use_potion(interaction, "potion_luck", "Thuốc x2 Luck")
 
-    @discord.ui.button(label="Cắn +5 Jackpot", style=discord.ButtonStyle.danger, custom_id="use_jackpot")
+    @discord.ui.button(label="Dùng x2 Jackpot", style=discord.ButtonStyle.danger, custom_id="use_jackpot")
     async def use_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await self.use_potion(interaction, "potion_jackpot", "Thuốc +5 Jackpot")
+        await self.use_potion(interaction, "potion_jackpot", "Thuốc x2 Jackpot")
 
 async def make_profile_embed(member, player):
     need_xp = player["level"] * 100
@@ -663,8 +663,8 @@ async def buff(ctx, stat=None, target=None, amount=None):
     player.setdefault("cash", 1000)
     player.setdefault("xp", 0)
     player.setdefault("level", 1)
-    player.setdefault("luck", 0)
-    player.setdefault("jackpot", 0)
+    player.setdefault("luck", 1)
+    player.setdefault("jackpot", 1)
     player.setdefault("win_streak", 0)
 
     stat = stat.lower()
@@ -804,8 +804,8 @@ async def reset(ctx, member: discord.Member = None):
     player["cash"] = 1000
     player["xp"] = 0
     player["level"] = 1
-    player["luck"] = 0
-    player["jackpot"] = 0
+    player["luck"] = 1
+    player["jackpot"] = 1
     player["win_streak"] = 0
     player["last_daily"] = ""
 
