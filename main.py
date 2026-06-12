@@ -72,7 +72,7 @@ async def create_player(user_id):
         "luck": 0,
         "jackpot": 0,
         "win_streak": 0,
-        "last_daily": ""
+        "last_daily": "",
         "inv_potion_cash": 0,
         "inv_potion_luck": 0,
         "inv_potion_jackpot": 0,
