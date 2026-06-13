@@ -357,20 +357,28 @@ async def slot(ctx, bet: str = None):
     if has_potion_jackpot:
         jackpot_val *= 2
 
-    # ================= TỶ LỆ HỆ THỐNG ĐỘC LẬP T TUYỆT ĐỐI =================
-    jackpot_rate = 1 + (jackpot_val * 0.3)
-    jackpot_rate = min(jackpot_rate, 25) # Khóa trần Jackpot
-
-    base_win_rate = 30 + luck_val
+    # ================= TỶ LỆ MỚI =================
+    
+    # Jackpot chỉ ảnh hưởng jackpot
+    jackpot_rate = min(1 + (jackpot_val * 0.3), 25)
+    
+    # Luck chỉ ảnh hưởng các loại thắng thường
+    luck_rate = min(20 + luck_val, 70)
+    
     if player["cash"] <= 1000:
-        base_win_rate += 10
-    base_win_rate = min(base_win_rate, 70) # Khóa trần Luck giải thường
-
-    # Chia phân đoạn cây thước từ 0 -> 100 một chiều tịnh tiến
+        luck_rate += 10
+    
+    luck_rate = min(luck_rate, 70)
+    
+    # Phân chia các loại thắng
+    super_win_rate = luck_rate * 0.15
+    big_win_rate = luck_rate * 0.35
+    normal_win_rate = luck_rate * 0.50
+    
     jackpot_limit = jackpot_rate
-    sieu_thang_limit = jackpot_limit + (base_win_rate * 0.15)
-    thang_lon_limit = sieu_thang_limit + (base_win_rate * 0.35)
-    thang_thuong_limit = thang_lon_limit + (base_win_rate * 0.50)
+    sieu_thang_limit = jackpot_limit + super_win_rate
+    thang_lon_limit = sieu_thang_limit + big_win_rate
+    thang_thuong_limit = thang_lon_limit + normal_win_rate
 
     # ================= ANIMATION VÒNG QUAY =================
     emojis = ["🍒", "🍋", "🍇", "💎", "⭐"]
