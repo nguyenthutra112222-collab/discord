@@ -20,107 +20,99 @@ bot = commands.Bot(command_prefix=prefix, intents=intents)
 
 bot.remove_command("help")
 
+class HelpDropdown(discord.ui.Select):
+    def __init__(self, prefix):
+        options = [
+            discord.SelectOption(label="Trang Chủ", description="Quay lại menu chính", emoji="🏠", value="home"),
+            discord.SelectOption(label="Kinh Tế & Hệ Thống", description="Các lệnh kiếm tiền và nâng cấp", emoji="💰", value="economy"),
+            discord.SelectOption(label="Trò Chơi Giải Trí", description="Các lệnh đặt cược, thử vận may", emoji="🎰", value="games"),
+            discord.SelectOption(label="Hồ Sơ & Thống Kê", description="Xem thông tin cá nhân và BXH", emoji="👤", value="profile"),
+            discord.SelectOption(label="Dược Phẩm & Mẹo", description="Thông tin thuốc và hướng dẫn chơi", emoji="🧪", value="tips")
+        ]
+        super().__init__(placeholder="Chọn danh mục bạn muốn xem trợ giúp...", min_values=1, max_values=1, options=options)
+        self.prefix = prefix
+
+    async def callback(self, interaction: discord.Interaction):
+        selection = self.values[0]
+        embed = discord.Embed(color=discord.Color.blurple())
+        embed.set_thumbnail(url=interaction.user.display_avatar.url)
+        
+        if selection == "home":
+            embed.title = "📖 TRUNG TÂM TRỢ GIÚP"
+            embed.description = (
+                f"Xin chào {interaction.user.mention}!\n"
+                f"Hãy sử dụng thanh cuộn bên dưới để chọn danh mục lệnh bạn cần tìm hiểu.\n\n"
+                f"📍 **Prefix của Bot:** `{self.prefix}`"
+            )
+            embed.add_field(name="🗂️ Danh Mục Hiện Có:", value="• 💰 **Kinh Tế & Hệ Thống**\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", inline=False)
+            
+        elif selection == "economy":
+            embed.title = "💰 KINH TẾ & HỆ THỐNG"
+            embed.add_field(name=f"☀️ `{self.prefix}daily`", value="Nhận phần thưởng điểm danh miễn phí mỗi 12 giờ.", inline=False)
+            embed.add_field(name=f"🛒 `{self.prefix}shop`", value="Truy cập cửa hàng mua dược phẩm gia tăng sức mạnh.", inline=False)
+            embed.add_field(name=f"⚙️ `{self.prefix}start`", value="Mở bảng điều khiển nâng cấp chỉ số vĩnh viễn (Luck / Jackpot).", inline=False)
+            embed.add_field(name=f"ℹ️ `{self.prefix}botinfo`", value="Xem thông tin chi tiết trạng thái hoạt động và phiên bản Bot.", inline=False)
+            
+        elif selection == "games":
+            embed.title = "🎰 TRÒ CHƠI GIẢI TRÍ"
+            embed.add_field(name=f"🎲 `{self.prefix}roll <tiền>`", value="Đổ xúc xắc thử vận may, nhân số tiền thưởng từ `x2` đến `x10`.\n*Ví dụ: >roll 100k, >roll all*", inline=False)
+            embed.add_field(name=f"🎰 `{self.prefix}slot <tiền>`", value="Máy quay Slot Machine tích hợp hệ thống tỷ lệ nối đuôi độc lập, cơ hội nổ hũ Jackpot vĩnh viễn.", inline=False)
+            embed.add_field(name="💡 Phím tắt số tiền hợp lệ:", value="Hệ thống hỗ trợ viết tắt dạng: `1000`, `100k`, `1m`, hoặc cược tất tay với `all`.", inline=False)
+            
+        elif selection == "profile":
+            embed.title = "👤 HỒ SƠ & THỐNG KÊ"
+            embed.add_field(name=f"📋 `{self.prefix}profile`", value="Kiểm tra thẻ căn cước thông tin cá nhân của bạn.", inline=False)
+            embed.add_field(name=f"👥 `{self.prefix}profile @user`", value="Xem thông tin hồ sơ công khai của một người chơi khác.", inline=False)
+            embed.add_field(name=f"🏆 `{self.prefix}toplvl`", value="Hiển thị bảng xếp hạng những đại gia có Level cao nhất toàn Server.", inline=False)
+            
+        elif selection == "tips":
+            embed.title = "🧪 DƯỢC PHẨM & MẸO CHƠI"
+            embed.description = "ℹ️ *Tất cả dược phẩm mua tại shop có thời gian hiệu lực trong vòng **15 phút**.*"
+            embed.add_field(name="🧪 Các loại thuốc bổ trợ:", value="• **X2 Cash:** Nhân đôi toàn bộ số tiền thắng nhận được.\n• **X2 Luck:** Gia tăng mạnh tỷ lệ thắng các mốc thường.\n• **X2 Jackpot:** Tăng gấp đôi cơ hội nổ hũ cực đại.", inline=False)
+            embed.add_field(name="📚 Mẹo chơi hiệu quả:", value="🍀 Chỉ số **Luck** càng cao -> tỷ lệ thắng càng lớn.\n🎰 Chỉ số **Jackpot** càng cao -> càng dễ nổ hũ x30.\n🔥 **Chuỗi thắng** càng dài -> Lượng EXP thưởng cộng thêm càng nhiều.\n🧪 Hãy cắn thuốc phối hợp cùng lúc để tối ưu hóa lợi nhuận đầu tư.", inline=False)
+
+        embed.set_footer(text=f"Yêu cầu bởi {interaction.user.display_name}", icon_url=interaction.user.display_avatar.url)
+        await interaction.response.edit_message(embed=embed, view=self.view)
+
+class HelpView(discord.ui.View):
+    def __init__(self, prefix):
+        super().__init__(timeout=60) # Tự động đóng tương tác sau 60 giây không sử dụng
+        self.add_item(HelpDropdown(prefix))
+        
+    async def on_timeout(self):
+        # Vô hiệu hóa thanh chọn khi hết thời gian để tránh lỗi
+        for item in self.children:
+            item.disabled = True
+        try:
+            await self.message.edit(view=self)
+        except:
+            pass
+
 @bot.command(name="help")
 async def help_command(ctx):
-
     prefix = ">"
 
+    # Tạo giao diện trang chủ chào mừng mặc định
     embed = discord.Embed(
         title="📖 TRUNG TÂM TRỢ GIÚP",
         description=(
             f"Xin chào {ctx.author.mention}!\n"
-            f"Dưới đây là toàn bộ lệnh hiện có của **{bot.user.name}**."
+            f"Hãy sử dụng thanh cuộn bên dưới để chọn danh mục lệnh bạn cần tìm hiểu.\n\n"
+            f"📍 **Prefix của Bot:** `{prefix}`"
         ),
         color=discord.Color.blurple()
     )
-
     embed.set_thumbnail(url=ctx.author.display_avatar.url)
-
-    # ================= KINH TẾ =================
-
     embed.add_field(
-        name="💰 KINH TẾ",
-        value=
-        f"☀️ `{prefix}daily`\n"
-        f"Nhận thưởng điểm danh mỗi 12 giờ.\n\n"
-        f"🛒 `{prefix}shop`\n"
-        f"Mua thuốc tăng sức mạnh.\n\n"
-        f"⚙️ `{prefix}start`\n"
-        f"Mở bảng nâng cấp Luck & Jackpot.",
+        name="🗂️ Danh Mục Hiện Có:", 
+        value="• 💰 **Kinh Tế & Hệ Thống**\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", 
         inline=False
     )
+    embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
-    # ================= CỜ BẠC =================
-
-    embed.add_field(
-        name="🎰 TRÒ CHƠI",
-        value=
-        f"🎲 `{prefix}roll <tiền>`\n"
-        f"Đổ xúc xắc nhận thưởng x2 ~ x10.\n\n"
-        f"🎰 `{prefix}slot <tiền>`\n"
-        f"Máy quay Jackpot với nhiều cấp thưởng.\n\n"
-        f"💡 Hỗ trợ:\n"
-        f"`1000`, `100k`, `1m`, `all`",
-        inline=False
-    )
-
-    # ================= HỒ SƠ =================
-
-    embed.add_field(
-        name="👤 HỒ SƠ",
-        value=
-        f"📋 `{prefix}profile`\n"
-        f"Xem hồ sơ của bản thân.\n\n"
-        f"👥 `{prefix}profile @user`\n"
-        f"Xem hồ sơ người khác.\n\n"
-        f"🏆 `{prefix}toplvl`\n"
-        f"Xem BXH Level toàn server.",
-        inline=False
-    )
-
-    # ================= THUỐC =================
-
-    embed.add_field(
-        name="🧪 DƯỢC PHẨM",
-        value=
-        "💰 X2 Cash\n"
-        "→ Nhân đôi tiền thắng.\n\n"
-        "🍀 X2 Luck\n"
-        "→ Tăng tỷ lệ thắng.\n\n"
-        "🎰 X2 Jackpot\n"
-        "→ Tăng tỷ lệ nổ Jackpot.\n\n"
-        "⏳ Thời gian: 15 phút.",
-        inline=False
-    )
-
-    # ================= THÔNG TIN =================
-
-    embed.add_field(
-        name="🤖 HỆ THỐNG",
-        value=
-        f"ℹ️ `{prefix}botinfo`\n"
-        f"Xem trạng thái và phiên bản bot.",
-        inline=False
-    )
-
-    # ================= MẸO =================
-
-    embed.add_field(
-        name="📚 MẸO CHƠI",
-        value=
-        "🍀 Luck càng cao → tỷ lệ thắng càng lớn.\n"
-        "🎰 Jackpot càng cao → dễ nổ hũ hơn.\n"
-        "🔥 Chuỗi thắng càng dài → EXP thưởng càng nhiều.\n"
-        "🧪 Kết hợp thuốc để tối đa hóa lợi nhuận.",
-        inline=False
-    )
-
-    embed.set_footer(
-        text=f"Yêu cầu bởi {ctx.author.display_name}",
-        icon_url=ctx.author.display_avatar.url
-    )
-
-    await ctx.send(embed=embed)
+    view = HelpView(prefix)
+    # Lưu tin nhắn lại vào view để xử lý tính năng timeout xóa nút bấm
+    view.message = await ctx.send(embed=embed, view=view)
     
 # Hàm tính toán cộng EXP và xử lý Lên Cấp
 def add_xp(player, amount):
