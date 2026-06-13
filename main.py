@@ -154,249 +154,249 @@ def parse_bet_amount(val_str: str, current_cash: int) -> int:
 
 @bot.command()
 async def roll(ctx, bet: str = None):
-player = await get_player(ctx.author.id)
+    player = await get_player(ctx.author.id)
 
-if bet is None:
-    return await ctx.send(
-        "🎲 Cách dùng:\n"
-        "`>roll 1000`\n"
-        "`>roll 100k`\n"
-        "`>roll all`"
+    if bet is None:
+        return await ctx.send(
+            "🎲 Cách dùng:\n"
+            "`>roll 1000`\n"
+            "`>roll 100k`\n"
+            "`>roll all`"
+        )
+
+    try:
+        bet_amount = parse_bet_amount(
+            bet,
+            player["cash"]
+        )
+    except:
+        return await ctx.send(
+            "❌ Số tiền không hợp lệ!"
+        )
+
+    if bet_amount <= 0:
+        return await ctx.send(
+            "❌ Tiền cược phải lớn hơn 0!"
+        )
+
+    if player["cash"] < bet_amount:
+        return await ctx.send(
+            f"❌ Bạn chỉ còn {player['cash']:,} Cash"
+        )
+
+    # Trừ tiền trước
+    player["cash"] -= bet_amount
+
+    now = datetime.now(timezone.utc)
+
+    # ================= THUỐC =================
+
+    has_cash_potion = (
+        player.get("expire_potion_cash")
+        and now < datetime.fromisoformat(
+            player["expire_potion_cash"]
+        )
     )
 
-try:
-    bet_amount = parse_bet_amount(
-        bet,
-        player["cash"]
-    )
-except:
-    return await ctx.send(
-        "❌ Số tiền không hợp lệ!"
+    has_luck_potion = (
+        player.get("expire_potion_luck")
+        and now < datetime.fromisoformat(
+            player["expire_potion_luck"]
+        )
     )
 
-if bet_amount <= 0:
-    return await ctx.send(
-        "❌ Tiền cược phải lớn hơn 0!"
+    has_jackpot_potion = (
+        player.get("expire_potion_jackpot")
+        and now < datetime.fromisoformat(
+            player["expire_potion_jackpot"]
+        )
     )
 
-if player["cash"] < bet_amount:
-    return await ctx.send(
-        f"❌ Bạn chỉ còn {player['cash']:,} Cash"
+    # ================= CHỈ SỐ =================
+
+    luck = player.get("luck", 1)
+    jackpot = player.get("jackpot", 1)
+
+    if has_luck_potion:
+        luck *= 2
+
+    if has_jackpot_potion:
+        jackpot *= 2
+
+    # ================= TỶ LỆ =================
+
+    jackpot_rate = 2 + (jackpot * 0.2)
+
+    win_rate = 45 + (luck * 0.5)
+
+    # bảo hiểm người nghèo
+
+    if player["cash"] <= 1000:
+        win_rate += 15
+
+    # giới hạn
+
+    jackpot_rate = min(
+        jackpot_rate,
+        25
     )
 
-# Trừ tiền trước
-player["cash"] -= bet_amount
-
-now = datetime.now(timezone.utc)
-
-# ================= THUỐC =================
-
-has_cash_potion = (
-    player.get("expire_potion_cash")
-    and now < datetime.fromisoformat(
-        player["expire_potion_cash"]
+    win_rate = min(
+        win_rate,
+        80
     )
-)
 
-has_luck_potion = (
-    player.get("expire_potion_luck")
-    and now < datetime.fromisoformat(
-        player["expire_potion_luck"]
+    jackpot_limit = jackpot_rate
+
+    win_limit = jackpot_limit + win_rate
+
+    # ================= ANIMATION =================
+
+    msg = await ctx.send(
+        "🎲 Đang lắc xúc xắc..."
     )
-)
 
-has_jackpot_potion = (
-    player.get("expire_potion_jackpot")
-    and now < datetime.fromisoformat(
-        player["expire_potion_jackpot"]
-    )
-)
+    frames = [
+        "🎲 ⚪⚪⚪",
+        "🎲 🔴⚪⚪",
+        "🎲 🔴🔴⚪",
+        "🎲 🔴🔴🔴"
+    ]
 
-# ================= CHỈ SỐ =================
+    for frame in frames:
+        await asyncio.sleep(0.5)
+        await msg.edit(content=frame)
 
-luck = player.get("luck", 1)
-jackpot = player.get("jackpot", 1)
+    rng = random.uniform(0, 100)
 
-if has_luck_potion:
-    luck *= 2
-
-if has_jackpot_potion:
-    jackpot *= 2
-
-# ================= TỶ LỆ =================
-
-jackpot_rate = 2 + (jackpot * 0.2)
-
-win_rate = 45 + (luck * 0.5)
-
-# bảo hiểm người nghèo
-
-if player["cash"] <= 1000:
-    win_rate += 15
-
-# giới hạn
-
-jackpot_rate = min(
-    jackpot_rate,
-    25
-)
-
-win_rate = min(
-    win_rate,
-    80
-)
-
-jackpot_limit = jackpot_rate
-
-win_limit = jackpot_limit + win_rate
-
-# ================= ANIMATION =================
-
-msg = await ctx.send(
-    "🎲 Đang lắc xúc xắc..."
-)
-
-frames = [
-    "🎲 ⚪⚪⚪",
-    "🎲 🔴⚪⚪",
-    "🎲 🔴🔴⚪",
-    "🎲 🔴🔴🔴"
-]
-
-for frame in frames:
-    await asyncio.sleep(0.5)
-    await msg.edit(content=frame)
-
-rng = random.uniform(0, 100)
-
-potion_text = ""
-
-if has_cash_potion:
-    potion_text = "\n✨ Thuốc x2 Cash đang hoạt động"
-
-# ================= JACKPOT =================
-
-if rng <= jackpot_limit:
-
-    reward = bet_amount * 10
+    potion_text = ""
 
     if has_cash_potion:
-        reward *= 2
+        potion_text = "\n✨ Thuốc x2 Cash đang hoạt động"
 
-    player["cash"] += reward
+    # ================= JACKPOT =================
 
-    player["win_streak"] += 1
+    if rng <= jackpot_limit:
 
-    bonus_xp = 0
+        reward = bet_amount * 10
 
-    if player["win_streak"] >= 3:
-        bonus_xp = (
-            player["win_streak"] * 5
+        if has_cash_potion:
+            reward *= 2
+    
+        player["cash"] += reward
+
+        player["win_streak"] += 1
+
+        bonus_xp = 0
+
+        if player["win_streak"] >= 3:
+            bonus_xp = (
+                player["win_streak"] * 5
+            )
+    
+        total_xp = 25 + bonus_xp
+
+        leveled_up = add_xp(
+            player,
+            total_xp
         )
 
-    total_xp = 25 + bonus_xp
+        await save_player(player)
 
-    leveled_up = add_xp(
-        player,
-        total_xp
-    )
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+            )
 
-    await save_player(player)
-
-    if leveled_up:
-        await ctx.send(
-            f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+        return await msg.edit(
+            content=
+            f"💥 JACKPOT 💥\n\n"
+            f"🎉 {ctx.author.mention}\n"
+            f"💰 +{reward:,} Cash\n"
+            f"✨ +{total_xp} XP\n"
+            f"🔥 Win Streak: {player['win_streak']}"
+            f"{potion_text}"
         )
 
-    return await msg.edit(
-        content=
-        f"💥 JACKPOT 💥\n\n"
-        f"🎉 {ctx.author.mention}\n"
-        f"💰 +{reward:,} Cash\n"
-        f"✨ +{total_xp} XP\n"
-        f"🔥 Win Streak: {player['win_streak']}"
-        f"{potion_text}"
-    )
+    # ================= THẮNG =================
 
-# ================= THẮNG =================
+    elif rng <= win_limit:
 
-elif rng <= win_limit:
+        multiplier = random.choice([
+            2.0,
+            2.5,
+            3.0
+        ])
 
-    multiplier = random.choice([
-        2.0,
-        2.5,
-        3.0
-    ])
-
-    reward = int(
-        bet_amount * multiplier
-    )
-
-    if has_cash_potion:
-        reward *= 2
-
-    player["cash"] += reward
-
-    player["win_streak"] += 1
-
-    bonus_xp = 0
-
-    if player["win_streak"] >= 3:
-        bonus_xp = (
-            player["win_streak"] * 5
+        reward = int(
+            bet_amount * multiplier
         )
 
-    total_xp = 20 + bonus_xp
+        if has_cash_potion:
+            reward *= 2
 
-    leveled_up = add_xp(
-        player,
-        total_xp
-    )
+        player["cash"] += reward
 
-    await save_player(player)
+        player["win_streak"] += 1
 
-    if leveled_up:
-        await ctx.send(
-            f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+        bonus_xp = 0
+    
+        if player["win_streak"] >= 3:
+            bonus_xp = (
+                player["win_streak"] * 5
+            )
+    
+        total_xp = 20 + bonus_xp
+
+        leveled_up = add_xp(
+            player,
+            total_xp
         )
 
-    return await msg.edit(
-        content=
-        f"🎉 THẮNG!\n\n"
-        f"🎲 x{multiplier}\n"
-        f"💰 +{reward:,} Cash\n"
-        f"✨ +{total_xp} XP\n"
-        f"🔥 Win Streak: {player['win_streak']}"
-        f"{potion_text}"
-    )
+        await save_player(player)
 
-# ================= THUA =================
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+            )
 
-else:
-
-    player["win_streak"] = 0
-
-    if player["cash"] < 100:
-        player["cash"] = 100
-
-    leveled_up = add_xp(
-        player,
-        15
-    )
-
-    await save_player(player)
-
-    if leveled_up:
-        await ctx.send(
-            f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+        return await msg.edit(
+            content=
+            f"🎉 THẮNG!\n\n"
+            f"🎲 x{multiplier}\n"
+            f"💰 +{reward:,} Cash\n"
+            f"✨ +{total_xp} XP\n"
+            f"🔥 Win Streak: {player['win_streak']}"
+            f"{potion_text}"
         )
 
-    return await msg.edit(
-        content=
-        f"💀 THUA!\n\n"
-        f"💸 -{bet_amount:,} Cash\n"
-        f"📉 Win Streak bị reset!"
-    )
+    # ================= THUA =================
+
+    else:
+
+        player["win_streak"] = 0
+
+        if player["cash"] < 100:
+            player["cash"] = 100
+
+        leveled_up = add_xp(
+            player,
+            15
+        )
+
+        await save_player(player)
+
+        if leveled_up:
+            await ctx.send(
+                f"🎉 {ctx.author.mention} lên Level {player['level']}!"
+            )
+    
+        return await msg.edit(
+            content=
+            f"💀 THUA!\n\n"
+            f"💸 -{bet_amount:,} Cash\n"
+            f"📉 Win Streak bị reset!"
+        )
 
 @roll.error
 async def roll_error(ctx, error):
