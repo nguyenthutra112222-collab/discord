@@ -358,7 +358,6 @@ async def slot(ctx, bet: str = None):
         jackpot_val *= 2
 
     # ================= TỶ LỆ MỚI =================
-    
     # Jackpot chỉ ảnh hưởng jackpot
     jackpot_rate = min(1 + (jackpot_val * 0.3), 25)
     
@@ -380,16 +379,20 @@ async def slot(ctx, bet: str = None):
     thang_lon_limit = sieu_thang_limit + big_win_rate
     thang_thuong_limit = thang_lon_limit + normal_win_rate
 
-    # ================= ANIMATION VÒNG QUAY =================
+    # ================= ANIMATION VÒNG QUAY (ĐÃ TỐI ƯU CHỐNG RATE LIMIT) =================
     emojis = ["🍒", "🍋", "🍇", "💎", "⭐"]
-    msg = await ctx.send("🎰 Đang quay...")
+    msg = await ctx.send("🎰 **[ 🟢 STARTING ]** Đang khởi động trục quay...")
 
-    for _ in range(8):
-        e1 = random.choice(emojis)
-        e2 = random.choice(emojis)
-        e3 = random.choice(emojis)
-        await msg.edit(content=f"🎰 | {e1} | {e2} | {e3} |")
-        await asyncio.sleep(0.25)
+    # Chỉ chạy 3 khung hình chuyển động giả lập lăn bánh để triệt tiêu hoàn toàn delay API
+    frames = [
+        f"🎰 | {random.choice(emojis)} | {random.choice(emojis)} | {random.choice(emojis)} |\n🎰 | 🔄 | 🔄 | 🔄 |",
+        f"🎰 | 🔄 | 🔄 | 🔄 |\n🎰 | {random.choice(emojis)} | {random.choice(emojis)} | {random.choice(emojis)} |",
+        f"🎰 | {random.choice(emojis)} | {random.choice(emojis)} | {random.choice(emojis)} |\n🎰 | ⚡ | ⚡ | ⚡ |"
+    ]
+
+    for frame in frames:
+        await msg.edit(content=frame)
+        await asyncio.sleep(0.4) # Thời gian nghỉ lý tưởng giữa các khung hình
 
     # Quay số ngẫu nhiên xác định kết quả
     rng = random.uniform(0, 100)
