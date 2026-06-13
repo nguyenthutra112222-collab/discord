@@ -18,6 +18,108 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 
+@bot.command(name="help")
+async def help_command(ctx):
+
+    prefix = ">"
+
+    embed = discord.Embed(
+        title="📖 TRUNG TÂM TRỢ GIÚP",
+        description=(
+            f"Xin chào {ctx.author.mention}!\n"
+            f"Dưới đây là toàn bộ lệnh hiện có của **{bot.user.name}**."
+        ),
+        color=discord.Color.blurple()
+    )
+
+    embed.set_thumbnail(url=ctx.author.display_avatar.url)
+
+    # ================= KINH TẾ =================
+
+    embed.add_field(
+        name="💰 KINH TẾ",
+        value=
+        f"☀️ `{prefix}daily`\n"
+        f"Nhận thưởng điểm danh mỗi 12 giờ.\n\n"
+        f"🛒 `{prefix}shop`\n"
+        f"Mua thuốc tăng sức mạnh.\n\n"
+        f"⚙️ `{prefix}start`\n"
+        f"Mở bảng nâng cấp Luck & Jackpot.",
+        inline=False
+    )
+
+    # ================= CỜ BẠC =================
+
+    embed.add_field(
+        name="🎰 TRÒ CHƠI",
+        value=
+        f"🎲 `{prefix}roll <tiền>`\n"
+        f"Đổ xúc xắc nhận thưởng x2 ~ x10.\n\n"
+        f"🎰 `{prefix}slot <tiền>`\n"
+        f"Máy quay Jackpot với nhiều cấp thưởng.\n\n"
+        f"💡 Hỗ trợ:\n"
+        f"`1000`, `100k`, `1m`, `all`",
+        inline=False
+    )
+
+    # ================= HỒ SƠ =================
+
+    embed.add_field(
+        name="👤 HỒ SƠ",
+        value=
+        f"📋 `{prefix}profile`\n"
+        f"Xem hồ sơ của bản thân.\n\n"
+        f"👥 `{prefix}profile @user`\n"
+        f"Xem hồ sơ người khác.\n\n"
+        f"🏆 `{prefix}toplvl`\n"
+        f"Xem BXH Level toàn server.",
+        inline=False
+    )
+
+    # ================= THUỐC =================
+
+    embed.add_field(
+        name="🧪 DƯỢC PHẨM",
+        value=
+        "💰 X2 Cash\n"
+        "→ Nhân đôi tiền thắng.\n\n"
+        "🍀 X2 Luck\n"
+        "→ Tăng tỷ lệ thắng.\n\n"
+        "🎰 X2 Jackpot\n"
+        "→ Tăng tỷ lệ nổ Jackpot.\n\n"
+        "⏳ Thời gian: 15 phút.",
+        inline=False
+    )
+
+    # ================= THÔNG TIN =================
+
+    embed.add_field(
+        name="🤖 HỆ THỐNG",
+        value=
+        f"ℹ️ `{prefix}botinfo`\n"
+        f"Xem trạng thái và phiên bản bot.",
+        inline=False
+    )
+
+    # ================= MẸO =================
+
+    embed.add_field(
+        name="📚 MẸO CHƠI",
+        value=
+        "🍀 Luck càng cao → tỷ lệ thắng càng lớn.\n"
+        "🎰 Jackpot càng cao → dễ nổ hũ hơn.\n"
+        "🔥 Chuỗi thắng càng dài → EXP thưởng càng nhiều.\n"
+        "🧪 Kết hợp thuốc để tối đa hóa lợi nhuận.",
+        inline=False
+    )
+
+    embed.set_footer(
+        text=f"Yêu cầu bởi {ctx.author.display_name}",
+        icon_url=ctx.author.display_avatar.url
+    )
+
+    await ctx.send(embed=embed)
+    
 # Hàm tính toán cộng EXP và xử lý Lên Cấp
 def add_xp(player, amount):
     player["xp"] += amount
@@ -1344,6 +1446,9 @@ async def on_ready():
             player_cache[data["user_id"]] = data
         except Exception as e:
             print(f"Lỗi đọc dữ liệu: {e}")
+    
+    activity = discord.Game(name=">help")
+    await bot.change_presence(status=discord.Status.idle, activity=activity)
 
     print(f"📂 Đã tải {len(player_cache)} người chơi vào hệ thống Cache.")
 
