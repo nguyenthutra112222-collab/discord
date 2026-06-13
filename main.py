@@ -32,36 +32,6 @@ DATA_GUILD_ID = 1514179127354069053
 DATA_CHANNEL_ID = 1514179128004313212
 player_cache = {}
 
-@bot.event
-async def on_ready():
-    bot.add_view(UpgradeView())
-    bot.add_view(ShopView())
-    print(f"✅ Đăng nhập thành công: {bot.user}")
-
-    channel = bot.get_channel(DATA_CHANNEL_ID)
-    if channel is None:
-        print("❌ Không tìm thấy kênh dữ liệu!")
-        return
-
-    player_cache.clear()
-    async for msg in channel.history(limit=None, oldest_first=True):
-        try:
-            data = json.loads(msg.content)
-            if "user_id" not in data:
-                continue
-            # Chuyển đổi dữ liệu cũ nếu còn sót lose_streak sang win_streak
-            if "lose_streak" in data:
-                data.pop("lose_streak")
-            if "win_streak" not in data:
-                data["win_streak"] = 0
-
-            data["_message_id"] = msg.id
-            player_cache[data["user_id"]] = data
-        except Exception as e:
-            print(f"Lỗi đọc dữ liệu: {e}")
-
-    print(f"📂 Đã tải {len(player_cache)} người chơi vào hệ thống Cache.")
-
 async def create_player(user_id):
     channel = bot.get_channel(DATA_CHANNEL_ID)
     data = {
@@ -1385,6 +1355,36 @@ async def servers(ctx):
     except Exception as e:
         await ctx.send(f"❌ Có lỗi xảy ra: {e}")
     
+@bot.event
+async def on_ready():
+    bot.add_view(UpgradeView())
+    bot.add_view(ShopView())
+    print(f"✅ Đăng nhập thành công: {bot.user}")
+
+    channel = bot.get_channel(DATA_CHANNEL_ID)
+    if channel is None:
+        print("❌ Không tìm thấy kênh dữ liệu!")
+        return
+
+    player_cache.clear()
+    async for msg in channel.history(limit=None, oldest_first=True):
+        try:
+            data = json.loads(msg.content)
+            if "user_id" not in data:
+                continue
+            # Chuyển đổi dữ liệu cũ nếu còn sót lose_streak sang win_streak
+            if "lose_streak" in data:
+                data.pop("lose_streak")
+            if "win_streak" not in data:
+                data["win_streak"] = 0
+
+            data["_message_id"] = msg.id
+            player_cache[data["user_id"]] = data
+        except Exception as e:
+            print(f"Lỗi đọc dữ liệu: {e}")
+
+    print(f"📂 Đã tải {len(player_cache)} người chơi vào hệ thống Cache.")
+
 if token is None:
     print("❌ Lỗi: Không tìm thấy biến TOKEN trong file .env!")
 else:
