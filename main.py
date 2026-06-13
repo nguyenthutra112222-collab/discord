@@ -18,6 +18,8 @@ intents.reactions = True
 
 bot = commands.Bot(command_prefix=prefix, intents=intents)
 
+bot.remove_command("help")
+
 @bot.command(name="help")
 async def help_command(ctx):
 
