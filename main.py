@@ -537,22 +537,103 @@ async def slot(ctx, bet: str = None):
         )
         
 # ===== CÁC LỆNH HIỂN THỊ & ADMIN =====
+# Hàm tính số tiền cần để nâng cấp (Cấp càng cao càng tốn tiền)
+def get_upgrade_cost(current_level):
+    return (current_level + 1) * 1000
+
+class UpgradeView(discord.ui.View):
+    def __init__(self):
+        # timeout=None để nút bấm hoạt động vĩnh viễn (Persistent View) khi bot restart
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🍀 Nâng Cấp Luck", style=discord.ButtonStyle.primary, custom_id="btn_upgrade_luck")
+    async def upgrade_luck(self, interaction: discord.Interaction, button: discord.ui.Button):
+        player = await get_player(interaction.user.id)
+        current_luck = player.get("luck", 1)
+        cost = get_upgrade_cost(current_luck)
+
+        if player["cash"] < cost:
+            return await interaction.response.send_message(
+                f"❌ Bạn không đủ tiền! Nâng lên Luck cấp {current_luck + 1} cần **{cost:,} Cash**.", 
+                ephemeral=True
+            )
+
+        # Trừ tiền và tăng chỉ số
+        player["cash"] -= cost
+        player["luck"] = current_luck + 1
+        await save_player(player)
+
+        # Cập nhật lại giao diện (Embed mới sau khi nâng cấp) mới tinh, thông minh hơn
+        embed = create_start_embed(interaction.user, player)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+    @discord.ui.button(label="🎰 Nâng Cấp Jackpot", style=discord.ButtonStyle.danger, custom_id="btn_upgrade_jackpot")
+    async def upgrade_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
+        player = await get_player(interaction.user.id)
+        current_jackpot = player.get("jackpot", 1)
+        cost = get_upgrade_cost(current_jackpot)
+
+        if player["cash"] < cost:
+            return await interaction.response.send_message(
+                f"❌ Bạn không đủ tiền! Nâng lên Jackpot cấp {current_jackpot + 1} cần **{cost:,} Cash**.", 
+                ephemeral=True
+            )
+
+        # Trừ tiền và tăng chỉ số
+        player["cash"] -= cost
+        player["jackpot"] = current_jackpot + 1
+        await save_player(player)
+
+        # Cập nhật lại giao diện (Embed mới sau khi nâng cấp) mới tinh, thông minh hơn
+        embed = create_start_embed(interaction.user, player)
+        await interaction.response.edit_message(embed=embed, view=self)
+
+# Hàm tạo giao diện Embed dùng chung để tối ưu hóa việc cập nhật dữ liệu tự động
+def create_start_embed(user, player):
+    luck_lvl = player.get("luck", 1)
+    jackpot_lvl = player.get("jackpot", 1)
+    
+    cost_luck = get_upgrade_cost(luck_lvl)
+    cost_jackpot = get_upgrade_cost(jackpot_lvl)
+
+    embed = discord.Embed(
+        title="⚙️ BẢNG NÂNG CẤP CHỈ SỐ LỚN", 
+        description="Sử dụng số Cash tích lũy để gia tăng tỷ lệ chiến thắng vĩnh viễn!",
+        color=discord.Color.gold()
+    )
+    embed.set_author(name=str(user), icon_url=user.display_avatar.url)
+    
+    # Chỉ hiển thị duy nhất số Cash tài sản của bản thân
+    embed.add_field(name="💰 Tài Sản Hiện Có", value=f"**{player['cash']:,} Cash**", inline=False)
+    
+    # Hiển thị 2 chỉ số Luck và Jackpot kèm chi phí thông minh
+    embed.add_field(
+        name="🍀 Chỉ số Luck hiện tại", 
+        value=f"• Cấp hiện tại: `{luck_lvl}`\n• Chi phí lên cấp tiếp theo: **{cost_luck:,} Cash**", 
+        inline=True
+    )
+    embed.add_field(
+        name="🎰 Chỉ số Jackpot hiện tại", 
+        value=f"• Cấp hiện tại: `{jackpot_lvl}`\n• Chi phí lên cấp tiếp theo: **{cost_jackpot:,} Cash**", 
+        inline=True
+    )
+    
+    embed.set_footer(text="Nhấn vào các nút bên dưới để tiến hành gia tăng sức mạnh!")
+    return embed
+
+
 @bot.command()
 async def start(ctx):
+    """Lệnh start mở bảng hiển thị tài sản và nâng cấp chỉ số"""
     player = await get_player(ctx.author.id)
-    need_xp = player["level"] * 100
-
-    embed = discord.Embed(title="🎮 THÔNG TIN NGƯỜI CHƠI", color=discord.Color.gold())
-    embed.set_author(name=str(ctx.author), icon_url=ctx.author.display_avatar.url)
-    embed.add_field(name="💰 Cash", value=f"{player['cash']:,}", inline=True)
-    embed.add_field(name="⭐ Level", value=player["level"], inline=True)
-    embed.add_field(name="📈 XP", value=f"{player['xp']}/{need_xp}", inline=True)
-    embed.add_field(name="🍀 Luck", value=player["luck"], inline=True)
-    embed.add_field(name="💎 Jackpot Thêm", value=player["jackpot"], inline=True)
-    embed.add_field(name="🔥 Chuỗi Thắng", value=player.get("win_streak", 0), inline=True)
-    embed.set_footer(text="Nhấn nút bên dưới để tiến hành gia tăng sức mạnh")
-
+    
+    # Gọi hàm tạo embed thông minh
+    embed = create_start_embed(ctx.author, player)
+    
+    # Gửi kèm View chứa 2 nút bấm vừa được khôi phục
     await ctx.send(embed=embed, view=UpgradeView())
+    
+#Profile----------------------------------------------------------------------
 
 def get_rank(level):
     if level >= 100: return "👑 Huyền Thoại"
