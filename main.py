@@ -20,6 +20,23 @@ bot = commands.Bot(command_prefix=prefix, intents=intents)
 
 bot.remove_command("help")
 
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        embed = discord.Embed(
+            description=f"⚠️ | **Lệnh** `{ctx.message.content}` **không tồn tại!**",
+            color=discord.Color.red(),
+        )
+        await ctx.send(embed=embed)
+
+        print(f"⚠️ | Lỗi: Lệnh `{ctx.message.content}` không tồn tại.")
+
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"⚠️ | **Lỗi: Thiếu đối số yêu cầu cho lệnh** `{ctx.command}`.")
+        print(f"⚠️ | Lỗi: Thiếu đối số yêu cầu cho lệnh {ctx.command}.")
+    else:
+        print(f"⚠️ | Lỗi không xác định: {error}")
+        
 class HelpDropdown(discord.ui.Select):
     def __init__(self, prefix):
         options = [
