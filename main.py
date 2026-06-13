@@ -1255,14 +1255,6 @@ async def cashrain(ctx, total_pool: str = None, max_claims: str = None):
             
         await rain_msg.edit(embed=embed, view=view)
 
-# ================= HỆ THỐNG SHOP VẬT PHẨM MỚI =================
-# Cấu hình giá tiền của từng loại thuốc tại đây
-PRICES = {
-    "potion_cash": 5000,       # Thuốc X2 Cash
-    "potion_luck": 3000,       # Thuốc +10 Luck
-    "potion_jackpot": 6000     # Thuốc +5 Jackpot
-}
-
 # ================= HỆ THỐNG SHOP VẬT PHẨM X2 =================
 PRICES = {
     "potion_cash": 5000,       
@@ -1304,7 +1296,7 @@ class ShopView(discord.ui.View):
 async def shop(ctx):
     """Mở cửa hàng mua thuốc tăng chỉ số"""
     embed = discord.Embed(
-        title="🧪 TIỆM THUỐC ĐẠI GIA - SHOP VẬT PHẨM X2",
+        title="🧪 TIỆM THUỐC - SHOP VẬT PHẨM X2",
         description="Mua thuốc tăng sức mạnh để nhân đôi tỷ lệ chiến thắng khi chơi game!\n*Lưu ý: Tất cả các loại thuốc đều có tác dụng trong **15 phút** kể từ lúc sử dụng.*",
         color=discord.Color.green()
     )
