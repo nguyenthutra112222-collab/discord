@@ -46,11 +46,17 @@ class HelpDropdown(discord.ui.Select):
             discord.SelectOption(label="Hồ Sơ & Thống Kê", description="Xem thông tin cá nhân và BXH", emoji="👤", value="profile"),
             discord.SelectOption(label="Dược Phẩm & Mẹo", description="Thông tin thuốc và hướng dẫn chơi", emoji="🧪", value="tips")
         ]
-        super().__init__(placeholder="Chọn danh mục bạn muốn xem trợ giúp...", min_values=1, max_values=1, options=options)
+        # BỔ SUNG: Khai báo custom_id="select_help_menu" vĩnh viễn cho Dropdown
+        super().__init__(
+            placeholder="Chọn danh mục bạn muốn xem trợ giúp...", 
+            min_values=1, 
+            max_values=1, 
+            options=options,
+            custom_id="select_help_menu" 
+        )
         self.prefix = prefix
 
     async def callback(self, interaction: discord.Interaction):
-        # Đã loại bỏ dòng gia hạn timeout vì view hiện tại là vĩnh viễn (timeout=None)
         selection = self.values[0]
         embed = discord.Embed(color=discord.Color.blurple())
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
@@ -95,10 +101,9 @@ class HelpDropdown(discord.ui.Select):
 
 class HelpView(discord.ui.View):
     def __init__(self, prefix):
-        # Đặt timeout=None để thanh cuộn hoạt động vĩnh viễn, không bao giờ tự khóa
+        # Thiết lập timeout=None để chạy vĩnh viễn
         super().__init__(timeout=None) 
         self.add_item(HelpDropdown(prefix))
-    # Đã xóa hàm on_timeout vì không cần dùng tới nữa
 
 @bot.command(name="help")
 async def help_command(ctx):
