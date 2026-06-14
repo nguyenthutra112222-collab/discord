@@ -117,7 +117,7 @@ async def help_command(ctx):
     embed.set_thumbnail(url=ctx.author.display_avatar.url)
     embed.add_field(
         name="🗂️ Danh Mục Hiện Có:", 
-        value="• 💰 **Kinh Tế & Hệ Thống** (Đã có `>give`)\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", 
+        value="• 💰 **Kinh Tế & Hệ Thống**\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", 
         inline=False
     )
     embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
