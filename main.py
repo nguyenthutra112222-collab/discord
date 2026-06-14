@@ -761,11 +761,16 @@ class UsePotionView(discord.ui.View):
         super().__init__(timeout=60)
         self.user_id = user_id
 
+    # Hàm kiểm tra thông minh: Bất kỳ ai bấm nút cũng sẽ kích hoạt hàm này trước
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         if interaction.user.id != self.user_id:
-            await interaction.response.send_message("❌ Đây không phải kho đồ của bạn!", ephemeral=True)
-            return False
-        return True
+            # Nếu người bấm KHÔNG PHẢI chủ sở hữu Profile, hiện tin nhắn phản hồi riêng cho họ
+            await interaction.response.send_message(
+                "❌ Đây không phải kho đồ của bạn! Bạn không thể sử dụng thuốc ké người khác.", 
+                ephemeral=True
+            )
+            return False # Chặn không cho chạy tiếp vào các hàm dùng thuốc bên dưới
+        return True # Hợp lệ, cho phép tiếp tục xử lý
 
     async def use_potion(self, interaction: discord.Interaction, potion_type: str, name: str):
         player = await get_player(interaction.user.id)
@@ -773,7 +778,10 @@ class UsePotionView(discord.ui.View):
         expire_key = f"expire_{potion_type}"
         
         if player.get(inv_key, 0) <= 0:
-            return await interaction.response.send_message(f"❌ Bạn không còn bình **{name}** nào trong kho! Hãy ra `>shop` để mua.", ephemeral=True)
+            return await interaction.response.send_message(
+                f"❌ Bạn không còn bình **{name}** nào trong kho! Hãy ra `>shop` để mua.", 
+                ephemeral=True
+            )
             
         # Trừ 1 bình trong túi
         player[inv_key] -= 1
@@ -784,9 +792,11 @@ class UsePotionView(discord.ui.View):
         
         await save_player(player)
         
-        # Cập nhật lại giao diện Embed Profile mới ngay lập tức
+        # Cập nhật lại giao diện Embed Profile mới ngay lập tức công khai tại kênh chat
         new_embed = await make_profile_embed(interaction.user, player)
         await interaction.response.edit_message(embed=new_embed, view=self)
+        
+        # Thống báo riêng cho chủ xe là đã cắn thuốc thành công
         await interaction.followup.send(f"🧪 Bạn đã sử dụng **{name}**! Có tác dụng trong 15 phút.", ephemeral=True)
 
     @discord.ui.button(label="Dùng X2 Cash", style=discord.ButtonStyle.success, custom_id="use_cash")
@@ -800,7 +810,7 @@ class UsePotionView(discord.ui.View):
     @discord.ui.button(label="Dùng x2 Jackpot", style=discord.ButtonStyle.danger, custom_id="use_jackpot")
     async def use_jackpot(self, interaction: discord.Interaction, button: discord.ui.Button):
         await self.use_potion(interaction, "potion_jackpot", "Thuốc x2 Jackpot")
-
+        
 async def make_profile_embed(member, player):
     need_xp = player["level"] * 100
     now = datetime.now(timezone.utc)
