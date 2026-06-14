@@ -766,7 +766,7 @@ class UsePotionView(discord.ui.View):
         if interaction.user.id != self.user_id:
             # Nếu người bấm KHÔNG PHẢI chủ sở hữu Profile, hiện tin nhắn phản hồi riêng cho họ
             await interaction.response.send_message(
-                "❌ Đây không phải kho đồ của bạn! Bạn không thể sử dụng thuốc ké người khác.", 
+                "❌ Đây không phải kho đồ của bạn! Bạn không thể sử dụng thuốc của người khác.", 
                 ephemeral=True
             )
             return False # Chặn không cho chạy tiếp vào các hàm dùng thuốc bên dưới
