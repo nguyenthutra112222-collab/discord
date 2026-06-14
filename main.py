@@ -50,6 +50,7 @@ class HelpDropdown(discord.ui.Select):
         self.prefix = prefix
 
     async def callback(self, interaction: discord.Interaction):
+        # Đã loại bỏ dòng gia hạn timeout vì view hiện tại là vĩnh viễn (timeout=None)
         selection = self.values[0]
         embed = discord.Embed(color=discord.Color.blurple())
         embed.set_thumbnail(url=interaction.user.display_avatar.url)
@@ -68,6 +69,7 @@ class HelpDropdown(discord.ui.Select):
             embed.add_field(name=f"☀️ `{self.prefix}daily`", value="Nhận phần thưởng điểm danh miễn phí mỗi 12 giờ.", inline=False)
             embed.add_field(name=f"🛒 `{self.prefix}shop`", value="Truy cập cửa hàng mua dược phẩm gia tăng sức mạnh.", inline=False)
             embed.add_field(name=f"⚙️ `{self.prefix}start`", value="Mở bảng điều khiển nâng cấp chỉ số vĩnh viễn (Luck / Jackpot).", inline=False)
+            embed.add_field(name=f"💸 `{self.prefix}give @user <số_tiền>`", value="Chuyển tiền túi của bản thân cho người chơi khác.\n*Ví dụ: >give @ThanhVienA 50k hoặc >give @ThanhVienA all*", inline=False)
             embed.add_field(name=f"ℹ️ `{self.prefix}botinfo`", value="Xem thông tin chi tiết trạng thái hoạt động và phiên bản Bot.", inline=False)
             
         elif selection == "games":
@@ -93,17 +95,10 @@ class HelpDropdown(discord.ui.Select):
 
 class HelpView(discord.ui.View):
     def __init__(self, prefix):
-        super().__init__(timeout=60) # Tự động đóng tương tác sau 60 giây không sử dụng
+        # Đặt timeout=None để thanh cuộn hoạt động vĩnh viễn, không bao giờ tự khóa
+        super().__init__(timeout=None) 
         self.add_item(HelpDropdown(prefix))
-        
-    async def on_timeout(self):
-        # Vô hiệu hóa thanh chọn khi hết thời gian để tránh lỗi
-        for item in self.children:
-            item.disabled = True
-        try:
-            await self.message.edit(view=self)
-        except:
-            pass
+    # Đã xóa hàm on_timeout vì không cần dùng tới nữa
 
 @bot.command(name="help")
 async def help_command(ctx):
@@ -122,14 +117,13 @@ async def help_command(ctx):
     embed.set_thumbnail(url=ctx.author.display_avatar.url)
     embed.add_field(
         name="🗂️ Danh Mục Hiện Có:", 
-        value="• 💰 **Kinh Tế & Hệ Thống**\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", 
+        value="• 💰 **Kinh Tế & Hệ Thống** (Đã có `>give`)\n• 🎰 **Trò Chơi Giải Trí**\n• 👤 **Hồ Sơ & Thống Kê**\n• 🧪 **Dược Phẩm & Mẹo**", 
         inline=False
     )
     embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
-    view = HelpView(prefix)
-    # Lưu tin nhắn lại vào view để xử lý tính năng timeout xóa nút bấm
-    view.message = await ctx.send(embed=embed, view=view)
+    # Gửi bảng chọn hoạt động vĩnh viễn ra kênh chat
+    await ctx.send(embed=embed, view=HelpView(prefix))
     
 # Hàm tính toán cộng EXP và xử lý Lên Cấp
 def add_xp(player, amount):
@@ -1493,9 +1487,10 @@ async def servers(ctx):
         await ctx.send(f"❌ Không thể gửi DM cho {ctx.author.mention}. Hãy mở quyền riêng tư nhận DM từ thành viên server.")
     except Exception as e:
         await ctx.send(f"❌ Có lỗi xảy ra: {e}")
-    
+
 @bot.event
 async def on_ready():
+    bot.add_view(HelpView(prefix=">"))
     bot.add_view(UpgradeView())
     bot.add_view(ShopView())
     print(f"✅ Đăng nhập thành công: {bot.user}")
