@@ -932,7 +932,7 @@ async def give_cash(ctx, member: discord.Member = None, amount: str = None):
     embed.add_field(name="👤 Người nhận", value=member.display_name, inline=True)
     embed.add_field(name="💰 Số tiền chuyển", value=f"**{transfer_amount:,} Cash**", inline=False)
     embed.add_field(name="💳 Số dư hiện tại của bạn", value=f"{giver['cash']:,} Cash", inline=False)
-    embed.set_thumbnail(url="https://vi.pngtree.com/so/bill-chuy%E1%BB%83n-ti%E1%BB%81n") # Link ảnh icon ví tiền/giao dịch (nếu thích bạn có thể đổi)
+    embed.set_thumbnail(url="https://png.pngtree.com/png-clipart/20240927/original/pngtree-successful-transaction-icon-vector-png-image_16107443.png") # Link ảnh icon ví tiền/giao dịch (nếu thích bạn có thể đổi)
     embed.set_footer(text=f"Mã giao dịch được xác thực bởi hệ thống {bot.user.name}")
     
     await ctx.send(embed=embed)
