@@ -875,6 +875,68 @@ async def toplvl(ctx):
     embed = discord.Embed(title="🏆 BẢNG XẾP HẠNG CAO THỦ (LEVEL)", description=text, color=discord.Color.gold())
     await ctx.send(embed=embed)
 
+@bot.command(name="give", aliases=["pay", "chuyen_tien"])
+async def give_cash(ctx, member: discord.Member = None, amount: str = None):
+    """Lệnh chuyển tiền Cash cho người chơi khác
+    Cách dùng: >give @user 50k hoặc >give @user all
+    """
+    # 1. Kiểm tra nếu quên nhập người nhận hoặc số tiền
+    if member is None or amount is None:
+        return await ctx.send(
+            "⚠️ **Cách sử dụng lệnh chuyển tiền:**\n"
+            f"`{ctx.prefix}give @tên_người_nhận <số_tiền>`\n"
+            f"**Ví dụ:** `{ctx.prefix}give @ThanhVienA 50k` hoặc `{ctx.prefix}give @ThanhVienA all`"
+        )
+
+    # 2. Kiểm tra các trường hợp người nhận không hợp lệ
+    if member.id == ctx.author.id:
+        return await ctx.send("❌ Bạn không thể tự chuyển tiền cho chính bản thân mình!")
+        
+    if member.bot:
+        return await ctx.send("❌ Không thể chuyển tiền cho tài khoản Bot/Hệ thống.")
+
+    # Lấy dữ liệu của người tặng (người gõ lệnh)
+    giver = await get_player(ctx.author.id)
+
+    # 3. Xử lý và kiểm tra số tiền chuyển
+    try:
+        # Sử dụng lại hàm parse_bet_amount đã có sẵn trong code của bạn để dịch '10k', '1m', 'all'...
+        transfer_amount = parse_bet_amount(amount, giver["cash"])
+    except Exception:
+        return await ctx.send("❌ Số tiền chuyển không hợp lệ! Hãy nhập số cụ thể hoặc dùng `k`, `m`, `all`.")
+
+    if transfer_amount <= 0:
+        return await ctx.send("❌ Số tiền chuyển phải lớn hơn **0 Cash**!")
+
+    if giver["cash"] < transfer_amount:
+        return await ctx.send(f"❌ Bạn không đủ tiền! Bạn hiện chỉ còn **{giver['cash']:,} Cash**.")
+
+    # Lấy dữ liệu của người nhận tiền
+    receiver = await get_player(member.id)
+
+    # 4. Tiến hành trừ tiền người tặng và cộng tiền cho người nhận
+    giver["cash"] -= transfer_amount
+    receiver["cash"] += transfer_amount
+
+    # 5. Lưu lại dữ liệu của cả 2 người vào hệ thống
+    await save_player(giver)
+    await save_player(receiver)
+
+    # 6. Thông báo thành công rực rỡ
+    embed = discord.Embed(
+        title="💸 GIAO DỊCH CHUYỂN TIỀN THÀNH CÔNG",
+        description=f"{ctx.author.mention} đã chuyển tiền thành công cho {member.mention}!",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="👤 Người gửi", value=ctx.author.display_name, inline=True)
+    embed.add_field(name="👤 Người nhận", value=member.display_name, inline=True)
+    embed.add_field(name="💰 Số tiền chuyển", value=f"**{transfer_amount:,} Cash**", inline=False)
+    embed.add_field(name="💳 Số dư hiện tại của bạn", value=f"{giver['cash']:,} Cash", inline=False)
+    embed.set_thumbnail(url="https://i.imgur.com/E8S9fK8.png") # Link ảnh icon ví tiền/giao dịch (nếu thích bạn có thể đổi)
+    embed.set_footer(text=f"Mã giao dịch được xác thực bởi hệ thống {bot.user.name}")
+    
+    await ctx.send(embed=embed)
+    
 ADMINS = [1195361246195757118, 1335606447144173610]
 
 @bot.command()
